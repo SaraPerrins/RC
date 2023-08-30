@@ -1,0 +1,37 @@
+---
+title: "RC"
+author: "Sara Perrins"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r read data}
+library(readr)
+ df <- read_csv("~/Downloads/ORC_Beneficiary_Comparison_Combined.csv", 
+   col_types = cols(TimePoint = col_factor(levels = c("1", 
+         "2")), Grantee = col_factor(levels = c("1", 
+         "2", "3", "4"))))
+
+ View(df)
+# $Group column is the original coding of 1-beneficiary; 2-comparison (which includes folks who actually received peer coaching)
+ 
+```
+
+```{r}
+require(dplyr)
+#Creates data frame of those who do not have blank surveys, and who deleting repeat surveys (by Timepoint, i.e., the same person can respond twice if it was for timepoint 1 and timepoint 2). Creating a variable to identify treatment vs control pop. 
+df2 <- df %>%
+  filter(across(c(Q4), ~!is.na(.))) %>%
+    group_by(TimePoint) %>%
+  distinct(Identifier, .keep_all = TRUE) %>%
+  mutate(TreatmentControl = case_when(Q5_1 ==1 ~ 'Treatment',
+                                      TRUE ~ 'Control'))
+
+nrow(df2[df2$TreatmentControl == "Treatment",]) #N= 31 
+nrow(df2[df2$TreatmentControl == "Control",]) # N = 8
+
+write.csv(df2, "Combined_TreatmentControl.csv")
