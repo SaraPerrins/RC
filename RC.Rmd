@@ -6,32 +6,183 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
-```{r read data}
-library(readr)
- df <- read_csv("~/Downloads/ORC_Beneficiary_Comparison_Combined.csv", 
-   col_types = cols(TimePoint = col_factor(levels = c("1", 
-         "2")), Grantee = col_factor(levels = c("1", 
-         "2", "3", "4"))))
+### Cleaning data  
+##### Remove <50% complete surveys (but keeping the NAs for the paper based surveys)  
+##### Q3 is the consent form question, where 1 = agree to participate, and 2 = do not agree. cleaning data to remove Q3 !=1.  
+N = 57 original observations became N = 49.  
 
- View(df)
-# $Group column is the original coding of 1-beneficiary; 2-comparison (which includes folks who actually received peer coaching)
- 
+```{r QUALTRICS data cleaning1 }
+library(readxl)
+df.codebook <- read_excel("~/Desktop/R Projects/RC/RC Cohort 1 Codebook_Sept2023.xlsx")
+df.comparison <- read_excel("~/Desktop/R Projects/RC/ALL Original Comparison Group Responses.xlsx")
+# names(df.comparison) <- sub("\\...\\d+$", "", names(df.comparison))
+colnames(df.comparison)
+
+
+df.treatment <- read_excel("~/Desktop/R Projects/RC/ALL Original Treatment Responses.xlsx")
+# names(df.treatment) <- sub("\\...\\d+$", "", names(df.treatment))
+colnames(df.treatment)
+
+#Merging all dataframes
+require(tidyverse)
+require(janitor)
+#compare_df_cols (df.comparison, df.treatment, return = "mismatch")
+df.treatment[, c(5,7:10,15:17,33)] <- sapply(df.treatment[, c(5,7:10,15:17,33)], as.numeric)
+df.comparison[, c(3,4,47)] <- sapply(df.comparison[, c(3,4,47)], as.character)
+# Combined.df <- bind_rows(df.comparison, df.treatment)
+# write.csv(Combined.df, "Combined.df.csv")
+
+# require(waldo)
+# compare(names(df.serve.comparison), names(df.serve.treatment))
+
+# Cleaning data to remove <50% complete surveys (but keeping the NAs for the paper based surveys), and keeping unique surveys (allowing for a baseline and a follow up from any one individual) 
+# Q3 is the consent form question, where 1 = agree to participate, and 2 = do not agree. cleaning data to remove Q3 !=1
+
+Combined.df<- subset(Combined.df, Progress > 50  | Q3 ==1 ) %>% #57 observations became 49
+  rename("Duration (in seconds)" ="Duration..in.seconds." ,
+         "Time Period"= "Time.Period")
+``` 
+
+##### Checking for duplicates 
+
+After allowing for one response per baseline and follow up periods, there is one respondent with duplicate data.  
+Previously (i.e., before I joined), the more recent or just follow up survey were kept but in this case, the "older" survey showed peer recovery coaching was received, and the more recent survey did not indicate peer recovery coaching. That would omit the exposure to the intervention and erroneously categorize this respondent as a comparison, when they should be treatment.  
+
+##### Creating code that instead combines some columns (like Q5 so that we can see ALL services they ever reported receiving), averages other columns (like likert responses), adn takes the max out of others (like education received).   
+
+##### Created a single row that "merges" the duplicate rows per the functions above (average, max, etc) and binds it back into the original dataframe.  
+
+**Final dataset has N = 48**
+``` {r data cleaning2}
+# Checks for duplicates, shows one ID from ServeMN baseline is duplicated
+duplicate.df <-Combined.df %>% 
+  group_by(`Time.Period`, RecipientEmail) %>%
+  add_count() %>% 
+  filter(n > 1 & !is.na(RecipientEmail)) %>% 
+  ungroup()  
+
+###One time point shows recovery coaching, the other time point does not, so we should combine the rows rather than keep only one?
+
+codebook <- read_excel("~/Downloads/RC_codebook_for_adding_row.xlsx")
+### All _TEXT variables can be omitted
+### any variables not included as "combine" "average" or "max" in the codebook below, 
+###   SHOULD be the same across duplicate rows and need to be copied over to new row
+library(dplyr)
+long <- codebook %>% 
+  select(-c("treatment question")) %>%
+  pivot_longer(cols = combine:same)%>%
+  na.omit()
+# vectors of columns you'll do the mutation over
+#Combined = stitches together the two rows' contents
+combined <- filter(long,name == 'combine')%>%
+  select(c(1))%>%
+  pull()
+#average = averages the two rows' values
+average <- filter(long,name == 'average')%>%
+  select(c(1))%>%
+  pull()
+#max = the higher value of the rows' values
+max <- filter(long,name == 'max')%>%
+  select(c(1))%>%
+  pull()
+#same = the two rows' values should be identical (e.g., sex) and uses the most recent surveys' value
+same <- filter(long,name == 'same')%>%
+  select(c(1))%>%
+  pull()
+
+#duplicate.2.df becomes the "merged" row of the duplicate rows
+duplicate.2.df <- duplicate.df %>%
+  # select(!ends_with('TEXT'))%>%
+  mutate(across(any_of(combined), ~ str_c(.x, collapse = ', ')),
+         across(any_of(max), ~ max(.x,na.rm = T)),
+         across(any_of(average), ~ mean(.x,na.rm=T)),
+         across(any_of(same), ~ last(.x,as.Date(StartDate,'%Y-%m-%d %H:%M:%S'))),
+         .by = RecipientEmail
+         )%>%
+  unique()
+
+## Binding the duplicate row to dataset
+library(waldo)
+compare(names(Combined.df), names(duplicate.2.df))
+duplicate.2.df<- duplicate.2.df %>% select (-c("n", ".by")) 
+Combined.df <- Combined.df %>% select(-c("X"))
+
+##Deleting the duplicate rows and adding merged row instead
+
+Combined.df2 <- Combined.df %>% group_by(`Time Period`, RecipientEmail) %>%
+  filter(n() == 1 | is.na(RecipientEmail)) %>%
+  ungroup()
+Combined.df2 <- rbind(Combined.df2, duplicate.2.df) #N = 48 
+
+## separating multiple choice columns Q5 and Q7 
+
+Q5_unlist <- 0+t(sapply(as.character(Combined.df2$Q5), function(line) 
+        sapply(1:9, function(x) x %in% unlist(strsplit(line, split="\\s|\\,"))) ))
+
+Q7_unlist <- 0+t(sapply(as.character(Combined.df2$Q7), function(line) 
+        sapply(1:6, function(x) x %in% unlist(strsplit(line, split="\\s|\\,"))) ))
+
+
+write.csv(Combined.df2,"Combined.df2.final.csv")
+
 ```
 
-```{r}
-require(dplyr)
-#Creates data frame of those who do not have blank surveys, and who deleting repeat surveys (by Timepoint, i.e., the same person can respond twice if it was for timepoint 1 and timepoint 2). Creating a variable to identify treatment vs control pop. 
-df2 <- df %>%
-  filter(across(c(Q4), ~!is.na(.))) %>%
-    group_by(TimePoint) %>%
-  distinct(Identifier, .keep_all = TRUE) %>%
-  mutate(TreatmentControl = case_when(Q5_1 ==1 ~ 'Treatment',
-                                      TRUE ~ 'Control'))
 
-nrow(df2[df2$TreatmentControl == "Treatment",]) #N= 31 
-nrow(df2[df2$TreatmentControl == "Control",]) # N = 8
+```{r reproducible df, include = FALSE}
 
-write.csv(df2, "Combined_TreatmentControl.csv")
+dput(Combined.df2[c(6:16),c(2,22,25)])
+
+structure(list(ID = c("a","b","c","d","e","f","a","g","b","d","z"), 
+               `Time Period` = c("Baseline", "Baseline", "Baseline", 
+"Baseline", "Baseline", "Baseline", "Follow-up", "Follow-up", 
+"Follow-up", "Follow-up", "Follow-up"), Q5 = c("1,4,5,6,7,8,9", 
+"1", "3", "3", "1", "1", "3,4,7", "1,3,4,5,6,7,8,9", "3,6,7", 
+"1,2,3,4,5,6,8", "4"), Q7 = c("6", "4", "2", NA, NA, "1", "2", 
+"1,2,3,4", NA, "1,2,3,4,5", NA)), row.names = c("6", "8", "9", 
+"10", "11", "12", "13", "14", "15", "16", "17"), class = "data.frame")
+
+# codebook.share <- read_excel("~/Downloads/RC_codebook_for_adding_row.xlsx")
+# dput(codebook.share[20:33,])
+
+# codebook.share <- structure(list(`treatment variable` = c("Q3", "Q4", "Q5", "Q5_9_TEXT", 
+# "Q6", "Q7", "Q7_6_TEXT", "Q22", "Q22_6_TEXT", "Q23", "Q23_6_TEXT", 
+# "Q8", "Q24", "Q9"), combine = c(NA, NA, 1, NA, NA, 1, NA, NA, NA, NA, NA, NA, 
+# NA, NA), average = c(1, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
+# 1, 1, 1), max = c(NA, 1, NA, NA, 1, NA, NA, 1, NA, 1, NA, NA, 
+# NA, NA)), row.names = c(NA, -14L), class = c("tbl_df", "tbl", 
+# "data.frame"))
+
+```
+
+## Preparing for analysis 
+###Exploring whether folks who provided baseline AND follow up can offer any interesting findings
+#### N = 3 folks have both surveys
+### Separating N = 
+
+```{r analysis prep}
+#Potentially summarize folks (n = 3) with baseline and followup?
+##Get folks and tally with both surveys:
+
+Combined.df2%>% group_by(RecipientEmail)%>%
+  get_dupes(RecipientEmail) %>% tally() # two data points for 3 participants
+
+# Treatment vs Control
+Combined.df2 <- Combined.df2 %>%
+  mutate(TreatmentControl = case_when(grepl("1", Q5) ~ 'Treatment',
+                                      TRUE ~ 'Control'), na.rm = TRUE)
+
+subset(Combined.df2, TreatmentControl == 'Treatment')
+subset(Combined.df2, TreatmentControl == 'Control')
+
+nrow(Combined.df2[Combined.df2$TreatmentControl == "Treatment",]) #N= 29
+nrow(unique(Combined.df2[Combined.df2$TreatmentControl == "Control",])) # N = 8
+
+# parametric or non parametric testing
+##Check distribution 
+
+```
+
+
