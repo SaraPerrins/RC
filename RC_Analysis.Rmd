@@ -1,0 +1,140 @@
+---
+title: "RC_analysis"
+author: "Sara Perrins"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+final <- read.csv("~/Desktop/R Projects/RC/Combined.df.final.csv")
+require(dplyr)
+```
+### Recovery Capital  
+Histogram shows non normal distribution
+```{r analysis_Create Recovery Capital variable}
+
+final$RecoveryCapital <-NA
+final$RecoveryCapital <- rowSums(final[ c("Q15_1","Q15_2","Q15_3","Q15_4","Q15_5","Q15_6","Q15_7","Q15_8","Q15_9","Q15_10","Q15_11")]) 
+
+summary(final$RecoveryCapital)
+hist(final$RecoveryCapital) #Shows non-normal distribution
+```
+
+### Results: Sample Characteristics- Treatment versus Control
+
+**N = 22 Treatment; N = 18 Control**
+```{r results_sample characteristics_groups}
+Results_SampleCharacteristics_TreatmentControl <- final %>%
+  filter(Q5 !="") %>%
+  group_by(TreatmentControl) %>%
+  summarise(N = n())
+print(Results_SampleCharacteristics_TreatmentControl)
+
+```
+
+### Results: Sample Characteristics - Sex  
+
+Table below shows n and percent of each sex category by Treatment vs Control;  
+Codebook: 1	Male (including transgender);  
+2	Female (including transgender);  
+3	Non-binary/ non-conforming;  
+4	Prefer to self describe (fill-in);  
+5	Prefer not to say
+
+``` {r results_sample characteristics_sex}
+
+Results_SampleCharacteristics_Sex <- final %>%
+  filter(!is.na(Q5)) %>%
+  group_by(TreatmentControl) %>% 
+  count(QID17) %>%
+    mutate(prop = n / sum(n))
+
+print(Results_SampleCharacteristics_Sex)
+```
+### Results: Sample Characteristics - Race 
+
+Table below shows n and percent of each sex category by Treatment vs Control;  
+Codebook: 
+1	White  
+2	Black or African American  
+3	American Indian or Alaska Native  
+4	Asian or Pacific Islander  
+5	Other (fill-in)  
+6	Don't know  
+7	Prefer not to say. 
+```{r results_sample characteristics_race}
+Results_SampleCharacteristics_Race <- final %>%
+  filter(!is.na(Q5)) %>%
+  group_by(TreatmentControl) %>% 
+  count(Q21) %>%
+    mutate(prop = n / sum(n))
+print(Results_SampleCharacteristics_Race)
+```
+Control: 42.1 White; 
+Treatment: 68.2% White
+  
+    
+    
+### Results: Sample Characteristics - Ethnicity
+
+Table below shows n and percent of each ethnicity category by Treatment vs Control;  
+Codebook: "Are you of Hispanic, Latino/a, or Spanish origin?"  
+1	Yes  
+2	No. 
+3	Don't know. 
+4	Prefer not to say  
+
+```{r results_sample characteristics_ethnicity}
+Results_SampleCharacteristics_Ethnicity <- final %>%
+  filter(!is.na(Q5)) %>%
+  group_by(TreatmentControl) %>% 
+  count(Q23) %>%
+    mutate(prop = n / sum(n))
+print(Results_SampleCharacteristics_Ethnicity)
+
+
+```
+Control: 
+15.8% Hispanic, Latino/a, or Spanish origin; 
+63.2% NOT Hispanic, Latino/a, or Spanish origin  
+
+Treatment:  
+86.3% NOT Hispanic, Latino/a, or Spanish origin
+
+### Results: Sample Characteristics - Education
+Codebook: "What is the highest grade or year of school you completed?"  
+1	Never attended school or only kindergarten  
+2	Elementary   
+3	Some high school  
+4	High school graduate or equivalent  
+5	Some college or technical school  
+6	College graduate  
+7	Prefer not to say  
+
+```{r results_sample characteristics_ethnicity}
+Results_SampleCharacteristics_Education <- final %>%
+  filter(!is.na(Q5)) %>%
+  group_by(TreatmentControl) %>% 
+  count(Q25) %>%
+    mutate(prop = n / sum(n))
+print(Results_SampleCharacteristics_Education)
+```
+
+Reframing to count those with high school education or higher:
+
+```{r results_sample characteristics_ethnicity}
+Results_SampleCharacteristics_Education.MinimumHighSchool <- final %>%
+  filter(!is.na(Q5)) %>%
+  group_by(TreatmentControl) %>% 
+  count(Q25 > 3 & Q25 < 7) %>%
+    mutate(prop = n / sum(n))
+print(Results_SampleCharacteristics_Education.MinimumHighSchool)
+```
+Control:  
+42.1% Have not had a high school education  
+52.6%$ Have a high school education or higher. 
+Treatment: 
+81.8% Have a high school education or higher  
+
+
