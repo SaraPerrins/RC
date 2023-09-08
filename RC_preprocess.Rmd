@@ -1,0 +1,290 @@
+---
+title: "RC"
+author: "Sara Perrins"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Cleaning data  
+##### Remove <50% complete surveys (but keeping the NAs for the paper based surveys)  
+##### Q3 is the consent form question, where 1 = agree to participate, and 2 = do not agree. cleaning data to remove Q3 !=1.  
+N = 57 original observations became N = 45.  
+
+```{r QUALTRICS data cleaning1, eval = FALSE }
+library(readxl)
+df.codebook <- read_excel("~/Desktop/R Projects/RC/RC Cohort 1 Codebook_Sept2023.xlsx")
+
+df.comparison <- read.csv("~/Desktop/R Projects/RC/ALL Original Comparison Group Responses.csv")
+df.comparison <- df.comparison %>% select(-c(5,9,11:13,15:19))
+colnames(df.comparison)
+
+df.treatment <- read.csv("~/Desktop/R Projects/RC/ALL Original Treatment Responses.csv", check.names =FALSE) 
+df.treatment <- df.treatment %>% select(-c(5,9,11:13,15:19))
+# names(df.treatment) <- sub("\\...\\d+$", "", names(df.treatment))
+colnames(df.treatment)
+
+#Merging all dataframes
+require(tidyverse)
+require(janitor)
+compare_df_cols (df.comparison, df.treatment, return = "mismatch")
+df.treatment[, c(6)] <- sapply(df.treatment[, c(6)], as.numeric)
+df.comparison[, c(37)] <- sapply(df.comparison[, c(37)], as.character)
+compare_df_cols (df.comparison, df.treatment, return = "mismatch")
+
+Combined.df.test <- bind_rows(df.comparison, df.treatment)
+colnames(Combined.df.test)
+# write.csv(Combined.df, "Combined.df.csv")
+
+
+# Cleaning data to remove <50% complete surveys (but keeping the NAs for the paper based surveys), and keeping unique surveys (allowing for a baseline and a follow up from any one individual) 
+# Q3 is the consent form question, where 1 = agree to participate, and 2 = do not agree. cleaning data to remove Q3 !=1
+
+Combined.df<- subset(Combined.df.test, Progress >50 | is.na(Progress) & Q3 == 1) 
+
+
+
+# 
+# %>% #57 observations became 45
+#   rename("Duration (in seconds)" ="Duration..in.seconds." ,
+#          "Time Period"= "Time.Period")
+``` 
+
+In the case of multiple responses by an individual, keeping only most recent survey 
+** results in N = 41** 
+```{r Cleaning data_ most recent survey only, , eval = FALSE }
+# Keeps only most recent survey, and then rbinds it back 
+Combined.df.mostrecent <-Combined.df %>% 
+  group_by(RecipientEmail) %>%
+  filter(!is.na(RecipientEmail) & n() > 1) %>%
+  slice_max(StartDate)
+
+Combined.df.unduplicated <- Combined.df %>% group_by(RecipientEmail) %>%
+  filter(n() == 1 | is.na(RecipientEmail)) %>%
+  ungroup()
+
+Combined.df.final <- rbind(Combined.df.mostrecent, Combined.df.unduplicated)
+write.csv(Combined.df.final, "Combined.df.final.csv")
+
+```
+
+##### Checking for duplicates 
+
+After allowing for one response per baseline and follow up periods, there is one respondent with duplicate data.  
+Previously (i.e., before I joined), the more recent or just follow up survey were kept but in this case, the "older" survey showed peer recovery coaching was received, and the more recent survey did not indicate peer recovery coaching. That would omit the exposure to the intervention and erroneously categorize this respondent as a comparison, when they should be treatment.  
+
+##### Creating code that instead combines some columns (like Q5 so that we can see ALL services they ever reported receiving), averages other columns (like likert responses), adn takes the max out of others (like education received).   
+
+##### Created a single row that "merges" the duplicate rows per the functions above (average, max, etc) and binds it back into the original dataframe.  
+
+**Final dataset has N = 48**
+``` {r data cleaning2, , eval = FALSE }
+#This code is for merging duplicates with a variety of functions so that you can keep all responses across surveys, or just the average, or max, etc
+
+# Checks for duplicates, shows one ID from ServeMN baseline is duplicated
+duplicate.df <-Combined.df %>% 
+  group_by(`Time.Period`, RecipientEmail) %>%
+  add_count() %>% 
+  filter(n > 1 & !is.na(RecipientEmail)) %>% 
+  ungroup()  
+
+###One time point shows recovery coaching, the other time point does not, so we should combine the rows rather than keep only one?
+
+codebook <- read_excel("~/Downloads/RC_codebook_for_adding_row.xlsx")
+### All _TEXT variables can be omitted
+### any variables not included as "combine" "average" or "max" in the codebook below, 
+###   SHOULD be the same across duplicate rows and need to be copied over to new row
+library(dplyr)
+long <- codebook %>% 
+  select(-c("treatment question")) %>%
+  pivot_longer(cols = combine:same)%>%
+  na.omit()
+# vectors of columns you'll do the mutation over
+#Combined = stitches together the two rows' contents
+combined <- filter(long,name == 'combine')%>%
+  select(c(1))%>%
+  pull()
+#average = averages the two rows' values
+average <- filter(long,name == 'average')%>%
+  select(c(1))%>%
+  pull()
+#max = the higher value of the rows' values
+max <- filter(long,name == 'max')%>%
+  select(c(1))%>%
+  pull()
+#same = the two rows' values should be identical (e.g., sex) and uses the most recent surveys' value
+same <- filter(long,name == 'same')%>%
+  select(c(1))%>%
+  pull()
+
+#duplicate.2.df becomes the "merged" row of the duplicate rows
+duplicate.2.df <- duplicate.df %>%
+  # select(!ends_with('TEXT'))%>%
+  mutate(across(any_of(combined), ~ str_c(.x, collapse = ', ')),
+         across(any_of(max), ~ max(.x,na.rm = T)),
+         across(any_of(average), ~ mean(.x,na.rm=T)),
+         across(any_of(same), ~ last(.x,as.Date(StartDate,'%Y-%m-%d %H:%M:%S'))),
+         .by = RecipientEmail
+         )%>%
+  unique()
+
+## Binding the duplicate row to dataset
+library(waldo)
+compare(names(Combined.df), names(duplicate.2.df))
+duplicate.2.df<- duplicate.2.df %>% select (-c("n", ".by")) 
+Combined.df <- Combined.df %>% select(-c("X"))
+
+##Deleting the duplicate rows and adding merged row instead
+
+Combined.df2 <- Combined.df %>% group_by(`Time Period`, RecipientEmail) %>%
+  filter(n() == 1 | is.na(RecipientEmail)) %>%
+  ungroup()
+Combined.df2 <- rbind(Combined.df2, duplicate.2.df) #N = 48 
+
+## separating multiple choice columns Q5 and Q7 
+
+Q5_unlist <- 0+t(sapply(as.character(Combined.df2$Q5), function(line) 
+        sapply(1:9, function(x) x %in% unlist(strsplit(line, split="\\s|\\,"))) ))
+
+Q7_unlist <- 0+t(sapply(as.character(Combined.df2$Q7), function(line) 
+        sapply(1:6, function(x) x %in% unlist(strsplit(line, split="\\s|\\,"))) ))
+
+
+write.csv(Combined.df2,"Combined.df2.final.csv")
+
+```
+
+
+```{r reproducible df, include = FALSE, , eval = FALSE }
+
+dput(Combined.df2[c(6:16),c(2,22,25)])
+
+structure(list(ID = c("a","b","c","d","e","f","a","g","b","d","z"), 
+               `Time Period` = c("Baseline", "Baseline", "Baseline", 
+"Baseline", "Baseline", "Baseline", "Follow-up", "Follow-up", 
+"Follow-up", "Follow-up", "Follow-up"), Q5 = c("1,4,5,6,7,8,9", 
+"1", "3", "3", "1", "1", "3,4,7", "1,3,4,5,6,7,8,9", "3,6,7", 
+"1,2,3,4,5,6,8", "4"), Q7 = c("6", "4", "2", NA, NA, "1", "2", 
+"1,2,3,4", NA, "1,2,3,4,5", NA)), row.names = c("6", "8", "9", 
+"10", "11", "12", "13", "14", "15", "16", "17"), class = "data.frame")
+
+# codebook.share <- read_excel("~/Downloads/RC_codebook_for_adding_row.xlsx")
+# dput(codebook.share[20:33,])
+
+# codebook.share <- structure(list(`treatment variable` = c("Q3", "Q4", "Q5", "Q5_9_TEXT", 
+# "Q6", "Q7", "Q7_6_TEXT", "Q22", "Q22_6_TEXT", "Q23", "Q23_6_TEXT", 
+# "Q8", "Q24", "Q9"), combine = c(NA, NA, 1, NA, NA, 1, NA, NA, NA, NA, NA, NA, 
+# NA, NA), average = c(1, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
+# 1, 1, 1), max = c(NA, 1, NA, NA, 1, NA, NA, 1, NA, 1, NA, NA, 
+# NA, NA)), row.names = c(NA, -14L), class = c("tbl_df", "tbl", 
+# "data.frame"))
+
+```
+
+### Preparing for analysis  
+
+#### Exploring whether folks who provided baseline AND follow up can offer any interesting findings. 
+N = 3 folks have both surveys. Not pursuing at this time. 
+
+```{r analysis_Create Treatment/Control}
+require(dplyr)
+#Potentially summarize folks (n = 3) with baseline and followup?
+##Get folks and tally with both surveys:
+
+Combined.df%>% group_by(RecipientEmail)%>%
+  get_dupes(RecipientEmail) %>% tally() # two data points for 3 participants
+
+
+# Creating Treatment and Control variable: 
+Combined.df2 <- Combined.df.final %>%
+  mutate(TreatmentControl = case_when(grepl("1", Q5) ~ 'Treatment',
+                                      TRUE ~ 'Control'), drop_na = TRUE)
+
+df.treatment.2 <- subset(Combined.df2, TreatmentControl == 'Treatment')
+write.csv(df.treatment.2, "df.treatment.2.csv")
+df.control.2 <- subset(Combined.df2, TreatmentControl == 'Control')
+write.csv(df.control.2, "df.control.2.csv")
+
+nrow(Combined.df2[Combined.df2$TreatmentControl == "Treatment",]) #N= 23
+nrow(unique(Combined.df2[Combined.df2$TreatmentControl == "Control",])) # N = 18
+
+
+Combined.df2 %>% get_dupes(X) %>% tally() #Confirmed no duplicate folks 
+
+```
+
+``` {r analysis_Pivoting multiple choice cells, }
+#Pivoting multiple choice cells
+library(tidyr)
+library(dplyr)
+
+Combined.df2 <- Combined.df2 %>%
+   mutate(id = row_number())
+          
+reduced_df <- Combined.df2 %>%
+  select(id, Q5, Q7)
+
+long_q5 <- reduced_df %>%
+  select(id, Q5)%>%
+  #group_by(ID,`Time Period`)%>%
+  separate_longer_delim(cols = c(Q5),delim = ',')%>%
+  mutate(Q5 = ifelse(is.na(Q5),0,as.numeric(Q5)))
+
+#-- create an expanded df for q5 and q7
+full_q5 <- long_q5 %>% complete(id,Q5 = Q5)
+
+missing_q5 <- anti_join(full_q5,long_q5)%>%
+  mutate(zero = 0)
+
+fixedq5 <- full_join(long_q5,missing_q5)%>%
+  arrange(id,Q5)%>%
+  mutate(new_name = paste0('Q5_',Q5),
+         Q5 = ifelse(is.na(zero), Q5,0))%>%
+  select(-zero)%>%
+  group_by(id)%>%
+  fill(everything(), .direction = 'updown')%>%
+  pivot_wider(names_from = new_name,
+              values_from = Q5)%>%
+  inner_join(Combined.df2)%>%
+  select(-Q5_0)
+
+
+# -- now q7
+# NA means no items endorsed, so replace with 0
+long_q7 <- reduced_df %>% 
+  select(id, Q7)%>%
+  separate_longer_delim(cols = c(Q7),delim = ',')%>%
+  mutate(Q7 = ifelse(is.na(Q7),0,as.numeric(Q7)))
+
+# complete data frame if all items and time periods were endorsed
+full_q7 <- long_q7  %>%
+  expand(id,Q7 = Q7)
+
+missing_q7 <- anti_join(full_q7,long_q7)%>%
+  mutate(zero = 0)
+
+fixedq7 <- full_join(long_q7,missing_q7)%>%
+  arrange(id,Q7)%>%
+  mutate(new_name = paste0('Q7_',Q7),
+         Q7 = ifelse(is.na(zero), Q7,0))%>%
+  select(-zero)%>%
+#  filter(!new_name == 'Q7_NA')%>%
+  group_by(id)%>%
+  fill(everything(), .direction = 'updown')%>%
+  pivot_wider(names_from = new_name,
+              values_from = Q7)%>%
+  inner_join(Combined.df2)%>%
+  select(-Q7_0)
+
+
+final <- inner_join(fixedq5,fixedq7)%>%
+  relocate(starts_with(c('Q5','Q7')), .before = Q3)
+
+
+```
+
+
+
