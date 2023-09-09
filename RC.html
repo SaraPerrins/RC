@@ -11,7 +11,7 @@
 
 <meta name="author" content="Sara Perrins" />
 
-<meta name="date" content="2023-09-07" />
+<meta name="date" content="2023-09-08" />
 
 <title>RC</title>
 
@@ -358,7 +358,7 @@ display: none;
 
 <h1 class="title toc-ignore">RC</h1>
 <h4 class="author">Sara Perrins</h4>
-<h4 class="date">2023-09-07</h4>
+<h4 class="date">2023-09-08</h4>
 
 </div>
 
@@ -372,7 +372,7 @@ based surveys)</h5>
 <div id="q3-is-the-consent-form-question-where-1-agree-to-participate-and-2-do-not-agree.-cleaning-data-to-remove-q3-1." class="section level5">
 <h5>Q3 is the consent form question, where 1 = agree to participate, and
 2 = do not agree. cleaning data to remove Q3 !=1.</h5>
-<p>N = 57 original observations became N = 49.</p>
+<p>N = 57 original observations became N = 45.</p>
 <pre class="r"><code>library(readxl)
 df.codebook &lt;- read_excel(&quot;~/Desktop/R Projects/RC/RC Cohort 1 Codebook_Sept2023.xlsx&quot;)
 df.comparison &lt;- read_excel(&quot;~/Desktop/R Projects/RC/ALL Original Comparison Group Responses.xlsx&quot;)
@@ -390,6 +390,7 @@ require(janitor)
 #compare_df_cols (df.comparison, df.treatment, return = &quot;mismatch&quot;)
 df.treatment[, c(5,7:10,15:17,33)] &lt;- sapply(df.treatment[, c(5,7:10,15:17,33)], as.numeric)
 df.comparison[, c(3,4,47)] &lt;- sapply(df.comparison[, c(3,4,47)], as.character)
+
 # Combined.df &lt;- bind_rows(df.comparison, df.treatment)
 # write.csv(Combined.df, &quot;Combined.df.csv&quot;)
 
@@ -399,9 +400,27 @@ df.comparison[, c(3,4,47)] &lt;- sapply(df.comparison[, c(3,4,47)], as.character
 # Cleaning data to remove &lt;50% complete surveys (but keeping the NAs for the paper based surveys), and keeping unique surveys (allowing for a baseline and a follow up from any one individual) 
 # Q3 is the consent form question, where 1 = agree to participate, and 2 = do not agree. cleaning data to remove Q3 !=1
 
-Combined.df&lt;- subset(Combined.df, Progress &gt; 50  | Q3 ==1 ) %&gt;% #57 observations became 49
-  rename(&quot;Duration (in seconds)&quot; =&quot;Duration..in.seconds.&quot; ,
-         &quot;Time Period&quot;= &quot;Time.Period&quot;)</code></pre>
+Combined.df&lt;- subset(Combined.df, Progress &gt;50 | is.na(Progress) &amp; Q3 == 1)
+
+
+# 
+# %&gt;% #57 observations became 45
+#   rename(&quot;Duration (in seconds)&quot; =&quot;Duration..in.seconds.&quot; ,
+#          &quot;Time Period&quot;= &quot;Time.Period&quot;)</code></pre>
+<p>In the case of multiple responses by an individual, keeping only most
+recent survey ** results in N = 41**</p>
+<pre class="r"><code># Keeps only most recent survey, and then rbinds it back 
+Combined.df.mostrecent &lt;-Combined.df %&gt;% 
+  group_by(RecipientEmail) %&gt;%
+  filter(!is.na(RecipientEmail) &amp; n() &gt; 1) %&gt;%
+  slice_max(StartDate)
+
+Combined.df.unduplicated &lt;- Combined.df %&gt;% group_by(RecipientEmail) %&gt;%
+  filter(n() == 1 | is.na(RecipientEmail)) %&gt;%
+  ungroup()
+
+Combined.df.final &lt;- rbind(Combined.df.mostrecent, Combined.df.unduplicated)
+write.csv(Combined.df.final, &quot;Combined.df.final.csv&quot;)</code></pre>
 </div>
 <div id="checking-for-duplicates" class="section level5">
 <h5>Checking for duplicates</h5>
@@ -425,7 +444,9 @@ education received).</h5>
 functions above (average, max, etc) and binds it back into the original
 dataframe.</h5>
 <p><strong>Final dataset has N = 48</strong></p>
-<pre class="r"><code># Checks for duplicates, shows one ID from ServeMN baseline is duplicated
+<pre class="r"><code>#This code is for merging duplicates with a variety of functions so that you can keep all responses across surveys, or just the average, or max, etc
+
+# Checks for duplicates, shows one ID from ServeMN baseline is duplicated
 duplicate.df &lt;-Combined.df %&gt;% 
   group_by(`Time.Period`, RecipientEmail) %&gt;%
   add_count() %&gt;% 
@@ -497,30 +518,126 @@ Q7_unlist &lt;- 0+t(sapply(as.character(Combined.df2$Q7), function(line)
 write.csv(Combined.df2,&quot;Combined.df2.final.csv&quot;)</code></pre>
 </div>
 </div>
-<div id="preparing-for-analysis" class="section level2">
-<h2>Preparing for analysis</h2>
-<p>###Exploring whether folks who provided baseline AND follow up can
-offer any interesting findings #### N = 3 folks have both surveys ###
-Separating N =</p>
+<div id="preparing-for-analysis" class="section level3">
+<h3>Preparing for analysis</h3>
+<div id="exploring-whether-folks-who-provided-baseline-and-follow-up-can-offer-any-interesting-findings." class="section level4">
+<h4>Exploring whether folks who provided baseline AND follow up can
+offer any interesting findings.</h4>
+<p>N = 3 folks have both surveys. Not pursuing at this time.</p>
 <pre class="r"><code>#Potentially summarize folks (n = 3) with baseline and followup?
 ##Get folks and tally with both surveys:
 
-Combined.df2%&gt;% group_by(RecipientEmail)%&gt;%
+Combined.df%&gt;% group_by(RecipientEmail)%&gt;%
   get_dupes(RecipientEmail) %&gt;% tally() # two data points for 3 participants
 
-# Treatment vs Control
-Combined.df2 &lt;- Combined.df2 %&gt;%
+
+# Creating Treatment and Control variable: 
+Combined.df2 &lt;- Combined.df.final %&gt;%
   mutate(TreatmentControl = case_when(grepl(&quot;1&quot;, Q5) ~ &#39;Treatment&#39;,
-                                      TRUE ~ &#39;Control&#39;), na.rm = TRUE)
+                                      TRUE ~ &#39;Control&#39;), drop_na = TRUE)
 
-subset(Combined.df2, TreatmentControl == &#39;Treatment&#39;)
-subset(Combined.df2, TreatmentControl == &#39;Control&#39;)
+df.treatment.2 &lt;- subset(Combined.df2, TreatmentControl == &#39;Treatment&#39;)
+write.csv(df.treatment.2, &quot;df.treatment.2.csv&quot;)
+df.control.2 &lt;- subset(Combined.df2, TreatmentControl == &#39;Control&#39;)
+write.csv(df.control.2, &quot;df.control.2.csv&quot;)
 
-nrow(Combined.df2[Combined.df2$TreatmentControl == &quot;Treatment&quot;,]) #N= 29
-nrow(unique(Combined.df2[Combined.df2$TreatmentControl == &quot;Control&quot;,])) # N = 8
+nrow(Combined.df2[Combined.df2$TreatmentControl == &quot;Treatment&quot;,]) #N= 23
+nrow(unique(Combined.df2[Combined.df2$TreatmentControl == &quot;Control&quot;,])) # N = 18
 
-# parametric or non parametric testing
-##Check distribution </code></pre>
+
+Combined.df2 %&gt;% get_dupes(X) %&gt;% tally() #Confirmed no duplicate folks </code></pre>
+<pre class="r"><code>#Pivoting multiple choice cells
+library(tidyr)
+library(dplyr)
+
+Combined.df2 &lt;- Combined.df2 %&gt;%
+   mutate(id = row_number())
+          
+reduced_df &lt;- Combined.df2 %&gt;%
+  select(id, Q5, Q7)
+
+long_q5 &lt;- reduced_df %&gt;%
+  select(id, Q5)%&gt;%
+  #group_by(ID,`Time Period`)%&gt;%
+  separate_longer_delim(cols = c(Q5),delim = &#39;,&#39;)%&gt;%
+  mutate(Q5 = ifelse(is.na(Q5),0,as.numeric(Q5)))
+
+#-- create an expanded df for q5 and q7
+full_q5 &lt;- long_q5 %&gt;% complete(id,Q5 = Q5)
+
+missing_q5 &lt;- anti_join(full_q5,long_q5)%&gt;%
+  mutate(zero = 0)
+
+fixedq5 &lt;- full_join(long_q5,missing_q5)%&gt;%
+  arrange(id,Q5)%&gt;%
+  mutate(new_name = paste0(&#39;Q5_&#39;,Q5),
+         Q5 = ifelse(is.na(zero), Q5,0))%&gt;%
+  select(-zero)%&gt;%
+  group_by(id)%&gt;%
+  fill(everything(), .direction = &#39;updown&#39;)%&gt;%
+  pivot_wider(names_from = new_name,
+              values_from = Q5)%&gt;%
+  inner_join(Combined.df2)%&gt;%
+  select(-Q5_0)
+
+
+# -- now q7
+# NA means no items endorsed, so replace with 0
+long_q7 &lt;- reduced_df %&gt;% 
+  select(id, Q7)%&gt;%
+  separate_longer_delim(cols = c(Q7),delim = &#39;,&#39;)%&gt;%
+  mutate(Q7 = ifelse(is.na(Q7),0,as.numeric(Q7)))
+
+# complete data frame if all items and time periods were endorsed
+full_q7 &lt;- long_q7  %&gt;%
+  expand(id,Q7 = Q7)
+
+missing_q7 &lt;- anti_join(full_q7,long_q7)%&gt;%
+  mutate(zero = 0)
+
+fixedq7 &lt;- full_join(long_q7,missing_q7)%&gt;%
+  arrange(id,Q7)%&gt;%
+  mutate(new_name = paste0(&#39;Q7_&#39;,Q7),
+         Q7 = ifelse(is.na(zero), Q7,0))%&gt;%
+  select(-zero)%&gt;%
+#  filter(!new_name == &#39;Q7_NA&#39;)%&gt;%
+  group_by(id)%&gt;%
+  fill(everything(), .direction = &#39;updown&#39;)%&gt;%
+  pivot_wider(names_from = new_name,
+              values_from = Q7)%&gt;%
+  inner_join(Combined.df2)%&gt;%
+  select(-Q7_0)
+
+
+final &lt;- inner_join(fixedq5,fixedq7)%&gt;%
+  relocate(starts_with(c(&#39;Q5&#39;,&#39;Q7&#39;)), .before = Q3)</code></pre>
+</div>
+</div>
+<div id="recovery-capital" class="section level3">
+<h3>Recovery Capital</h3>
+<p>Histogram shows non normal distribution</p>
+<pre class="r"><code>final$RecoveryCapital &lt;-NA
+final$RecoveryCapital &lt;- rowSums(final[ c(&quot;Q15_1&quot;,&quot;Q15_2&quot;,&quot;Q15_3&quot;,&quot;Q15_4&quot;,&quot;Q15_5&quot;,&quot;Q15_6&quot;,&quot;Q15_7&quot;,&quot;Q15_8&quot;,&quot;Q15_9&quot;,&quot;Q15_10&quot;,&quot;Q15_11&quot;)]) 
+
+summary(final$RecoveryCapital)
+hist(final$RecoveryCapital) #Shows non-normal distribution</code></pre>
+</div>
+<div id="results-sample-characteristics---sex" class="section level3">
+<h3>Results: Sample Characteristics - Sex</h3>
+<p>Table below shows n and percent of each sex category by Treatment vs
+Control;<br />
+Codebook: 1 Male (including transgender);<br />
+2 Female (including transgender);<br />
+3 Non-binary/ non-conforming;<br />
+4 Prefer to self describe (fill-in);<br />
+5 Prefer not to say</p>
+<pre class="r"><code>Results_SampleCharacteristics_Sex &lt;- final %&gt;%
+  filter(!is.na(Q5)) %&gt;%
+  group_by(TreatmentControl) %&gt;% 
+  count(QID17) %&gt;%
+    mutate(prop = n / sum(n))
+
+print(Results_SampleCharacteristics_Sex)</code></pre>
 </div>
 
 
