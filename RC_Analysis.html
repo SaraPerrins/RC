@@ -607,6 +607,7 @@ print(Results_RecoveryCapital_Itemized) </code></pre>
 ##  9 Control          Q15_9_Median    4.5
 ## 10 Control          Q15_10_Median   4  
 ## # ℹ 56 more rows</code></pre>
+<pre class="r"><code>write.csv(Results_RecoveryCapital_Itemized, &quot;Results_RecoveryCapital_Itemized.csv&quot;)</code></pre>
 </div>
 <div id="results_recovery-capital-mann-whitney-test-results-for-total-recovery-capital" class="section level4">
 <h4>Results_Recovery Capital: Mann-Whitney test results for TOTAL
@@ -639,6 +640,60 @@ marginal significance (p = 0.057) for item 11.</p>
 ##   Q15_1 Q15_2 Q15_3  Q15_4 Q15_5 Q15_6 Q15_7 Q15_8  Q15_9 Q15_10 Q15_11
 ##   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
 ## 1 0.218 0.432 0.574 0.0731 0.225 0.932 0.293 0.323 0.0722  0.816 0.0572</code></pre>
+</div>
+<div id="results_use-of-services" class="section level4">
+<h4>Results_Use of Services</h4>
+<p>very similar means in use of Services across groups.</p>
+<pre class="r"><code>Results_SampleCharacteristics_Services &lt;- final %&gt;%
+  filter(Q5!=&quot;&quot;) %&gt;%
+  group_by(TreatmentControl) %&gt;% 
+  summarise (meanServices = mean(Q13, na.rm = T), sdServices = sd(Q13, na.rm = T), minServices = min(Q13, na.rm = T), maxServices = max(Q13, na.rm = T)) %&gt;% 
+  ungroup()
+print(Results_SampleCharacteristics_Services)</code></pre>
+<pre><code>## # A tibble: 2 × 5
+##   TreatmentControl meanServices sdServices minServices maxServices
+##   &lt;chr&gt;                   &lt;dbl&gt;      &lt;dbl&gt;       &lt;int&gt;       &lt;int&gt;
+## 1 Control                  3          2.06           1           6
+## 2 Treatment                3.10       2.51           1           7</code></pre>
+</div>
+<div id="results_services-mann-whitney-u-test" class="section level4">
+<h4>Results_Services: Mann Whitney U Test</h4>
+<p>The two groups are not statistically different.<br />
+W = 197.5, p= 0.815</p>
+<pre class="r"><code>wilcox.test(Q13 ~ TreatmentControl, data = final, na.rm = TRUE, exact = FALSE)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test with continuity correction
+## 
+## data:  Q13 by TreatmentControl
+## W = 197.5, p-value = 0.815
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+</div>
+<div id="results_opioid-use" class="section level4">
+<h4>Results_Opioid Use</h4>
+<p>very similar means in Opioid Use in last 30 days across groups.</p>
+<pre class="r"><code>Results_SampleCharacteristics_OpioidUse &lt;- final %&gt;%
+  filter(Q5!=&quot;&quot;) %&gt;%
+  group_by(TreatmentControl) %&gt;% 
+  summarise (meanOpioidUse = mean(Q12, na.rm = T), sdOpioidUse = sd(Q12, na.rm = T), minOpioidUse = min(Q12, na.rm = T), maxOpioidUse = max(Q12, na.rm = T)) %&gt;% 
+  ungroup()
+print(Results_SampleCharacteristics_OpioidUse)</code></pre>
+<pre><code>## # A tibble: 2 × 5
+##   TreatmentControl meanOpioidUse sdOpioidUse minOpioidUse maxOpioidUse
+##   &lt;chr&gt;                    &lt;dbl&gt;       &lt;dbl&gt;        &lt;int&gt;        &lt;int&gt;
+## 1 Control                   4.53        1.33            1            5
+## 2 Treatment                 4.4         1.47            1            5</code></pre>
+</div>
+<div id="results_opioiduse-mann-whitney-u-test" class="section level4">
+<h4>Results_OpioidUse: Mann Whitney U Test</h4>
+<p>The two groups are not statistically different.<br />
+W = 175.5, p= 0.797</p>
+<pre class="r"><code>wilcox.test(Q12 ~ TreatmentControl, data = final, na.rm = TRUE, exact = FALSE)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test with continuity correction
+## 
+## data:  Q12 by TreatmentControl
+## W = 175.5, p-value = 0.797
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
 </div>
 </div>
 
