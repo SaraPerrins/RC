@@ -589,21 +589,24 @@ the treatment group.</p>
   filter(!is.na(Q5)) %&gt;%
   group_by(TreatmentControl) %&gt;% 
   summarise_at(.vars = names(.)[24:34],
-               .funs = c(Median = &quot;median&quot;, Mean = &quot;mean&quot;, SD = &quot;sd&quot;), na.rm = T)
+               .funs = c(Median = &quot;median&quot;, Mean = &quot;mean&quot;, SD = &quot;sd&quot;), na.rm = T) %&gt;%
+  pivot_longer(cols = -TreatmentControl,names_to = &quot;Item&quot;, values_to = &quot;value&quot;)
   
-print(Results_RecoveryCapital_Itemized, n = Inf)</code></pre>
-<pre><code>## # A tibble: 2 × 34
-##   TreatmentControl Q15_1_Median Q15_2_Median Q15_3_Median Q15_4_Median
-##   &lt;chr&gt;                   &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;
-## 1 Control                     5            4            4          3  
-## 2 Treatment                   5            4            4          4.5
-## # ℹ 29 more variables: Q15_5_Median &lt;dbl&gt;, Q15_6_Median &lt;dbl&gt;,
-## #   Q15_7_Median &lt;dbl&gt;, Q15_8_Median &lt;dbl&gt;, Q15_9_Median &lt;dbl&gt;,
-## #   Q15_10_Median &lt;dbl&gt;, Q15_11_Median &lt;dbl&gt;, Q15_1_Mean &lt;dbl&gt;,
-## #   Q15_2_Mean &lt;dbl&gt;, Q15_3_Mean &lt;dbl&gt;, Q15_4_Mean &lt;dbl&gt;, Q15_5_Mean &lt;dbl&gt;,
-## #   Q15_6_Mean &lt;dbl&gt;, Q15_7_Mean &lt;dbl&gt;, Q15_8_Mean &lt;dbl&gt;, Q15_9_Mean &lt;dbl&gt;,
-## #   Q15_10_Mean &lt;dbl&gt;, Q15_11_Mean &lt;dbl&gt;, Q15_1_SD &lt;dbl&gt;, Q15_2_SD &lt;dbl&gt;,
-## #   Q15_3_SD &lt;dbl&gt;, Q15_4_SD &lt;dbl&gt;, Q15_5_SD &lt;dbl&gt;, Q15_6_SD &lt;dbl&gt;, …</code></pre>
+print(Results_RecoveryCapital_Itemized) </code></pre>
+<pre><code>## # A tibble: 66 × 3
+##    TreatmentControl Item          value
+##    &lt;chr&gt;            &lt;chr&gt;         &lt;dbl&gt;
+##  1 Control          Q15_1_Median    5  
+##  2 Control          Q15_2_Median    4  
+##  3 Control          Q15_3_Median    4  
+##  4 Control          Q15_4_Median    3  
+##  5 Control          Q15_5_Median    3.5
+##  6 Control          Q15_6_Median    4  
+##  7 Control          Q15_7_Median    4  
+##  8 Control          Q15_8_Median    4  
+##  9 Control          Q15_9_Median    4.5
+## 10 Control          Q15_10_Median   4  
+## # ℹ 56 more rows</code></pre>
 </div>
 <div id="results_recovery-capital-mann-whitney-test-results-for-total-recovery-capital" class="section level4">
 <h4>Results_Recovery Capital: Mann-Whitney test results for TOTAL
@@ -631,16 +634,6 @@ Item</h4>
 <p>Results suggest marginal significance (p = 0.073) for item 4;<br />
 marginal significance (p = 0.072) for item 9;<br />
 marginal significance (p = 0.057) for item 11.</p>
-<pre class="r"><code>require(tidyverse)</code></pre>
-<pre><code>## Loading required package: tidyverse</code></pre>
-<pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──</code></pre>
-<pre><code>## ✔ ggplot2 3.3.5     ✔ purrr   1.0.2
-## ✔ tibble  3.2.1     ✔ stringr 1.5.0
-## ✔ tidyr   1.3.0     ✔ forcats 0.5.1
-## ✔ readr   2.1.2</code></pre>
-<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()</code></pre>
 <pre class="r"><code>map_df(final[c(24:34)], ~ wilcox.test(.x ~ TreatmentControl, data = final, na.rm = TRUE, exact = FALSE)$p.value)</code></pre>
 <pre><code>## # A tibble: 1 × 11
 ##   Q15_1 Q15_2 Q15_3  Q15_4 Q15_5 Q15_6 Q15_7 Q15_8  Q15_9 Q15_10 Q15_11
