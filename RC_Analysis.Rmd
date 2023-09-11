@@ -32,7 +32,15 @@ Results_SampleCharacteristics_TreatmentControl <- final %>%
 print(Results_SampleCharacteristics_TreatmentControl)
 
 ```
+### Results: Sample Characteristics - N by grantee
 
+```{r results_sample characteristics_grantee}
+Results_SampleCharacteristics_grantee <- final %>%
+  filter(Q5 !="") %>%
+  group_by(TreatmentControl, Organization) %>%
+  summarise(N = n())
+print(Results_SampleCharacteristics_grantee)
+```
 ### Results: Sample Characteristics - Sex  
 
 Table below shows n and percent of each sex category by Treatment vs Control;  
@@ -54,7 +62,7 @@ print(Results_SampleCharacteristics_Sex)
 ```
 ### Results: Sample Characteristics - Race 
 
-Table below shows n and percent of each sex category by Treatment vs Control;  
+Table below shows n and percent of each race category by Treatment vs Control;  
 Codebook: 
 1	White  
 2	Black or African American  
@@ -112,7 +120,7 @@ Codebook: "What is the highest grade or year of school you completed?"
 6	College graduate  
 7	Prefer not to say  
 
-```{r results_sample characteristics_ethnicity}
+```{r results_sample characteristics_education}
 Results_SampleCharacteristics_Education <- final %>%
   filter(!is.na(Q5)) %>%
   group_by(TreatmentControl) %>% 
@@ -121,9 +129,9 @@ Results_SampleCharacteristics_Education <- final %>%
 print(Results_SampleCharacteristics_Education)
 ```
 
-Reframing to count those with high school education or higher:
+### Reframing to count those with high school education or higher:
 
-```{r results_sample characteristics_ethnicity}
+```{r results_sample characteristics_Education_HS}
 Results_SampleCharacteristics_Education.MinimumHighSchool <- final %>%
   filter(!is.na(Q5)) %>%
   group_by(TreatmentControl) %>% 
@@ -137,4 +145,55 @@ Control:
 Treatment: 
 81.8% Have a high school education or higher  
 
+
+### Results_Recovery Capital: mean, min, max and sd for entire treatment/control groups
+
+Shows spread and center for outcome: Recovery Capital by treatment group:  
+
+```{r results_recovery capital_descriptive}
+Results_SampleCharacteristics_RecoveryCapital <- final %>%
+  filter(!is.na(Q5)) %>%
+  group_by(TreatmentControl) %>% 
+  summarise(meanRecoveryCapital = mean(RecoveryCapital, na.rm = T), sdRecoveryCapital = sd(RecoveryCapital, na.rm = T), minRecoveryCapital = min(RecoveryCapital, na.rm = T), maxRecoveryCapital = max(RecoveryCapital, na.rm = T)) %>% 
+  ungroup()
+print(Results_SampleCharacteristics_RecoveryCapital)
+
+```
+
+#### Results_Recovery Capital: Mean, Median and SD for each item by treatment group. 
+Results suggest the Treatment group have higher mean scores for each of the 11 items.  
+Some median numbers are same across groups, but several are higher for the treatment group.  
+
+``` {r results_RecoveryCapital_Itemized_MeanSD}
+Results_RecoveryCapital_Itemized <- final %>%
+  filter(!is.na(Q5)) %>%
+  group_by(TreatmentControl) %>% 
+  summarise_at(.vars = names(.)[24:34],
+               .funs = c(Median = "median", Mean = "mean", SD = "sd"), na.rm = T)
+  
+print(Results_RecoveryCapital_Itemized)
+
+```
+
+#### Results_Recovery Capital: Mann-Whitney test results for TOTAL Recovery Capital
+
+This non parametric test assess whether the treatment and control groups are identical in their total RC score (i.e., the sum of their responses to Q15_1:Q15_11) 
+Results suggest that the treatment and control groups are NOT statistically different in their median scores.  
+W = 146.5, p-value = 0.2354. 
+
+```{r Results_Recovery Capital: Mann-Whitney tests}
+
+test.RecoveryCapital <- wilcox.test(RecoveryCapital ~ TreatmentControl, data=final) 
+print(test.RecoveryCapital)
+```
+#### Results_Recovery Capital: Statistical Test for Differences for Each Item  
+
+Results suggest marginal significance (p = 0.073) for item 4;  
+marginal significance (p = 0.072) for item 9;  
+marginal significance (p = 0.057) for item 11.  
+
+```{r Results_Recovery Capital_Mann Whitney U Test}
+require(tidyverse)
+map_df(final[c(24:34)], ~ wilcox.test(.x ~ TreatmentControl, data = final, na.rm = TRUE)$p.value)
+```
 
