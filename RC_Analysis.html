@@ -591,7 +591,7 @@ the treatment group.</p>
   summarise_at(.vars = names(.)[24:34],
                .funs = c(Median = &quot;median&quot;, Mean = &quot;mean&quot;, SD = &quot;sd&quot;), na.rm = T)
   
-print(Results_RecoveryCapital_Itemized)</code></pre>
+print(Results_RecoveryCapital_Itemized, n = Inf)</code></pre>
 <pre><code>## # A tibble: 2 × 34
 ##   TreatmentControl Q15_1_Median Q15_2_Median Q15_3_Median Q15_4_Median
 ##   &lt;chr&gt;                   &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;
@@ -641,29 +641,7 @@ marginal significance (p = 0.057) for item 11.</p>
 <pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
 ## ✖ dplyr::lag()    masks stats::lag()</code></pre>
-<pre class="r"><code>map_df(final[c(24:34)], ~ wilcox.test(.x ~ TreatmentControl, data = final, na.rm = TRUE)$p.value)</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 5L, 1L, 5L, 5L, 5L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 4L, 5L, 4L, 4L, 1L, 5L, 4L, 4L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 4L, 4L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 3L, 5L, 2L, 4L, 4L, 4L, 5L, 1L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 4L, 2L, 4L, 4L, 1L, 4L, 5L, 2L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 5L, 5L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 3L, 5L, 1L, 4L, 5L, 4L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 4L, 5L, 4L, 3L, 1L, 4L, 5L, 4L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 5L, 4L, 1L, 4L, 4L, 5L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 5L, 4L, :
-## cannot compute exact p-value with ties</code></pre>
-<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 5L, 5L, :
-## cannot compute exact p-value with ties</code></pre>
+<pre class="r"><code>map_df(final[c(24:34)], ~ wilcox.test(.x ~ TreatmentControl, data = final, na.rm = TRUE, exact = FALSE)$p.value)</code></pre>
 <pre><code>## # A tibble: 1 × 11
 ##   Q15_1 Q15_2 Q15_3  Q15_4 Q15_5 Q15_6 Q15_7 Q15_8  Q15_9 Q15_10 Q15_11
 ##   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
