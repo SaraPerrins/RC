@@ -11,7 +11,7 @@
 
 <meta name="author" content="Sara Perrins" />
 
-<meta name="date" content="2023-09-08" />
+<meta name="date" content="2023-09-11" />
 
 <title>RC_analysis</title>
 
@@ -358,7 +358,7 @@ display: none;
 
 <h1 class="title toc-ignore">RC_analysis</h1>
 <h4 class="author">Sara Perrins</h4>
-<h4 class="date">2023-09-08</h4>
+<h4 class="date">2023-09-11</h4>
 
 </div>
 
@@ -388,6 +388,27 @@ print(Results_SampleCharacteristics_TreatmentControl)</code></pre>
 ##   &lt;chr&gt;            &lt;int&gt;
 ## 1 Control             18
 ## 2 Treatment           22</code></pre>
+</div>
+<div id="results-sample-characteristics---n-by-grantee" class="section level3">
+<h3>Results: Sample Characteristics - N by grantee</h3>
+<pre class="r"><code>Results_SampleCharacteristics_grantee &lt;- final %&gt;%
+  filter(Q5 !=&quot;&quot;) %&gt;%
+  group_by(TreatmentControl, Organization) %&gt;%
+  summarise(N = n())</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;TreatmentControl&#39;. You can override using
+## the `.groups` argument.</code></pre>
+<pre class="r"><code>print(Results_SampleCharacteristics_grantee)</code></pre>
+<pre><code>## # A tibble: 7 × 3
+## # Groups:   TreatmentControl [2]
+##   TreatmentControl Organization                N
+##   &lt;chr&gt;            &lt;chr&gt;                   &lt;int&gt;
+## 1 Control          Above &amp; Beyond - HHH       12
+## 2 Control          Healing Action              2
+## 3 Control          ServeMN                     4
+## 4 Treatment        Above &amp; Beyond - HHH        2
+## 5 Treatment        Foundation for Recovery     2
+## 6 Treatment        Healing Action              4
+## 7 Treatment        ServeMN                    14</code></pre>
 </div>
 <div id="results-sample-characteristics---sex" class="section level3">
 <h3>Results: Sample Characteristics - Sex</h3>
@@ -422,7 +443,7 @@ print(Results_SampleCharacteristics_Sex)</code></pre>
 </div>
 <div id="results-sample-characteristics---race" class="section level3">
 <h3>Results: Sample Characteristics - Race</h3>
-<p>Table below shows n and percent of each sex category by Treatment vs
+<p>Table below shows n and percent of each race category by Treatment vs
 Control;<br />
 Codebook: 1 White<br />
 2 Black or African American<br />
@@ -516,7 +537,9 @@ print(Results_SampleCharacteristics_Education)</code></pre>
 ##  9 Treatment            5     8 0.364 
 ## 10 Treatment            6     4 0.182 
 ## 11 Treatment           NA     3 0.136</code></pre>
-<p>Reframing to count those with high school education or higher:</p>
+</div>
+<div id="reframing-to-count-those-with-high-school-education-or-higher" class="section level3">
+<h3>Reframing to count those with high school education or higher:</h3>
 <pre class="r"><code>Results_SampleCharacteristics_Education.MinimumHighSchool &lt;- final %&gt;%
   filter(!is.na(Q5)) %&gt;%
   group_by(TreatmentControl) %&gt;% 
@@ -537,6 +560,115 @@ print(Results_SampleCharacteristics_Education.MinimumHighSchool)</code></pre>
 42.1% Have not had a high school education<br />
 52.6%$ Have a high school education or higher. Treatment: 81.8% Have a
 high school education or higher</p>
+</div>
+<div id="results_recovery-capital-mean-min-max-and-sd-for-entire-treatmentcontrol-groups" class="section level3">
+<h3>Results_Recovery Capital: mean, min, max and sd for entire
+treatment/control groups</h3>
+<p>Shows spread and center for outcome: Recovery Capital by treatment
+group:</p>
+<pre class="r"><code>Results_SampleCharacteristics_RecoveryCapital &lt;- final %&gt;%
+  filter(!is.na(Q5)) %&gt;%
+  group_by(TreatmentControl) %&gt;% 
+  summarise(meanRecoveryCapital = mean(RecoveryCapital, na.rm = T), sdRecoveryCapital = sd(RecoveryCapital, na.rm = T), minRecoveryCapital = min(RecoveryCapital, na.rm = T), maxRecoveryCapital = max(RecoveryCapital, na.rm = T)) %&gt;% 
+  ungroup()
+print(Results_SampleCharacteristics_RecoveryCapital)</code></pre>
+<pre><code>## # A tibble: 2 × 5
+##   TreatmentControl meanRecoveryCapital sdRecoveryCapital minRecoveryCapital
+##   &lt;chr&gt;                          &lt;dbl&gt;             &lt;dbl&gt;              &lt;dbl&gt;
+## 1 Control                         38.9              15.3                 11
+## 2 Treatment                       44.3              12.7                 11
+## # ℹ 1 more variable: maxRecoveryCapital &lt;dbl&gt;</code></pre>
+<div id="results_recovery-capital-mean-median-and-sd-for-each-item-by-treatment-group." class="section level4">
+<h4>Results_Recovery Capital: Mean, Median and SD for each item by
+treatment group.</h4>
+<p>Results suggest the Treatment group have higher mean scores for each
+of the 11 items.<br />
+Some median numbers are same across groups, but several are higher for
+the treatment group.</p>
+<pre class="r"><code>Results_RecoveryCapital_Itemized &lt;- final %&gt;%
+  filter(!is.na(Q5)) %&gt;%
+  group_by(TreatmentControl) %&gt;% 
+  summarise_at(.vars = names(.)[24:34],
+               .funs = c(Median = &quot;median&quot;, Mean = &quot;mean&quot;, SD = &quot;sd&quot;), na.rm = T)
+  
+print(Results_RecoveryCapital_Itemized)</code></pre>
+<pre><code>## # A tibble: 2 × 34
+##   TreatmentControl Q15_1_Median Q15_2_Median Q15_3_Median Q15_4_Median
+##   &lt;chr&gt;                   &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;        &lt;dbl&gt;
+## 1 Control                     5            4            4          3  
+## 2 Treatment                   5            4            4          4.5
+## # ℹ 29 more variables: Q15_5_Median &lt;dbl&gt;, Q15_6_Median &lt;dbl&gt;,
+## #   Q15_7_Median &lt;dbl&gt;, Q15_8_Median &lt;dbl&gt;, Q15_9_Median &lt;dbl&gt;,
+## #   Q15_10_Median &lt;dbl&gt;, Q15_11_Median &lt;dbl&gt;, Q15_1_Mean &lt;dbl&gt;,
+## #   Q15_2_Mean &lt;dbl&gt;, Q15_3_Mean &lt;dbl&gt;, Q15_4_Mean &lt;dbl&gt;, Q15_5_Mean &lt;dbl&gt;,
+## #   Q15_6_Mean &lt;dbl&gt;, Q15_7_Mean &lt;dbl&gt;, Q15_8_Mean &lt;dbl&gt;, Q15_9_Mean &lt;dbl&gt;,
+## #   Q15_10_Mean &lt;dbl&gt;, Q15_11_Mean &lt;dbl&gt;, Q15_1_SD &lt;dbl&gt;, Q15_2_SD &lt;dbl&gt;,
+## #   Q15_3_SD &lt;dbl&gt;, Q15_4_SD &lt;dbl&gt;, Q15_5_SD &lt;dbl&gt;, Q15_6_SD &lt;dbl&gt;, …</code></pre>
+</div>
+<div id="results_recovery-capital-mann-whitney-test-results-for-total-recovery-capital" class="section level4">
+<h4>Results_Recovery Capital: Mann-Whitney test results for TOTAL
+Recovery Capital</h4>
+<p>This non parametric test assess whether the treatment and control
+groups are identical in their total RC score (i.e., the sum of their
+responses to Q15_1:Q15_11) Results suggest that the treatment and
+control groups are NOT statistically different in their median
+scores.<br />
+W = 146.5, p-value = 0.2354.</p>
+<pre class="r"><code>test.RecoveryCapital &lt;- wilcox.test(RecoveryCapital ~ TreatmentControl, data=final) </code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(11, 50, 52, 42, 45, 14, 46, 52, 43, :
+## cannot compute exact p-value with ties</code></pre>
+<pre class="r"><code>print(test.RecoveryCapital)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test with continuity correction
+## 
+## data:  RecoveryCapital by TreatmentControl
+## W = 146.5, p-value = 0.2354
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+</div>
+<div id="results_recovery-capital-statistical-test-for-differences-for-each-item" class="section level4">
+<h4>Results_Recovery Capital: Statistical Test for Differences for Each
+Item</h4>
+<p>Results suggest marginal significance (p = 0.073) for item 4;<br />
+marginal significance (p = 0.072) for item 9;<br />
+marginal significance (p = 0.057) for item 11.</p>
+<pre class="r"><code>require(tidyverse)</code></pre>
+<pre><code>## Loading required package: tidyverse</code></pre>
+<pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.3.5     ✔ purrr   1.0.2
+## ✔ tibble  3.2.1     ✔ stringr 1.5.0
+## ✔ tidyr   1.3.0     ✔ forcats 0.5.1
+## ✔ readr   2.1.2</code></pre>
+<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>map_df(final[c(24:34)], ~ wilcox.test(.x ~ TreatmentControl, data = final, na.rm = TRUE)$p.value)</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 5L, 1L, 5L, 5L, 5L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 4L, 5L, 4L, 4L, 1L, 5L, 4L, 4L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 4L, 4L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 3L, 5L, 2L, 4L, 4L, 4L, 5L, 1L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 4L, 2L, 4L, 4L, 1L, 4L, 5L, 2L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 5L, 5L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 3L, 5L, 1L, 4L, 5L, 4L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 4L, 5L, 4L, 3L, 1L, 4L, 5L, 4L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 5L, 4L, 1L, 4L, 4L, 5L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 5L, 4L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## Warning in wilcox.test.default(x = c(1L, 5L, 5L, 4L, 4L, 1L, 4L, 5L, 5L, :
+## cannot compute exact p-value with ties</code></pre>
+<pre><code>## # A tibble: 1 × 11
+##   Q15_1 Q15_2 Q15_3  Q15_4 Q15_5 Q15_6 Q15_7 Q15_8  Q15_9 Q15_10 Q15_11
+##   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+## 1 0.218 0.432 0.574 0.0731 0.225 0.932 0.293 0.323 0.0722  0.816 0.0572</code></pre>
+</div>
 </div>
 
 
