@@ -415,7 +415,13 @@ print(Results_SampleCharacteristics_TreatmentControl)</code></pre>
 <p>Table below shows n, percent, and mean of each age category by
 Treatment vs Control;<br />
 Codebook: 1 17 or younger.<br />
-2 18-29. 3 30-39. 4 40-49. 5 50-59. 6 60-69. 7 70-79. 8 80+.</p>
+2 18-29.<br />
+3 30-39.<br />
+4 40-49.<br />
+5 50-59.<br />
+6 60-69.<br />
+7 70-79.<br />
+8 80+.</p>
 <pre class="r"><code>Results_SampleCharacteristics_Age &lt;- final %&gt;%
   filter(Q5!= &quot;&quot;)  %&gt;%
   group_by(TreatmentControl) %&gt;% 
