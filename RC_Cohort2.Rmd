@@ -1,0 +1,25 @@
+---
+title: "RC_Cohort2"
+output: html_document
+date: "2024-01-24"
+---
+
+```{r}
+#Checking column names are the same across spreadsheets
+
+# Function to find differences in column names
+find_colname_differences <- function(df_list) {
+  all_names <- unique(unlist(lapply(df_list, names)))
+  differences <- lapply(df_list, function(df) setdiff(all_names, names(df)))
+  return(differences)
+}
+
+# Apply the function to our list of dataframes
+df_list <- list(Beneficiary_Covenant_Community, Beneficiary_Footprints, Beneficiary_Maggie_s_Place, Beneficiary_RHOPE)
+colname_differences <- find_colname_differences(df_list)
+
+# Print the differences
+print(colname_differences)
+
+```
+
